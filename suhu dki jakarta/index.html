@@ -8,8 +8,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- SheetJS (xlsx) CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- FontAwesome CDN -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -24,7 +22,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold">DSS Peramalan Suhu Udara DKI Jakarta</h1>
-                    <p class="text-xs text-indigo-200">Metode Regresi Linear Berbasis Data Otomatis</p>
+                    <p class="text-xs text-indigo-200">Metode Regresi Linear Berbasis Data Internal Otomatis</p>
                 </div>
             </div>
         </div>
@@ -110,7 +108,81 @@
         Sistem Pendukung Keputusan Peramalan Suhu Udara &copy; 2026 - DKI Jakarta
     </footer>
 
-    <!-- Hubungkan Script JavaScript -->
-    <script src="javascript/script.js"></script>
-</body>
-</html>
+    <!-- Logika JavaScript Pengganti File script.js & Data Excel -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // 1. Data Historis Internal (Suhu Udara DKI Jakarta rata-rata bulanan)
+            const dataSuhu = [
+                { x: 1, tahun: 2025, bulan: "Januari", y: 27.2 },
+                { x: 2, tahun: 2025, bulan: "Februari", y: 27.5 },
+                { x: 3, tahun: 2025, bulan: "Maret", y: 28.1 },
+                { x: 4, tahun: 2025, bulan: "April", y: 28.4 },
+                { x: 5, tahun: 2025, middleware: null, bulan: "Mei", y: 28.8 },
+                { x: 6, tahun: 2025, bulan: "Juni", y: 28.5 },
+                { x: 7, tahun: 2025, bulan: "Juli", y: 28.2 },
+                { x: 8, tahun: 2025, bulan: "Agustus", y: 28.3 },
+                { x: 9, tahun: 2025, bulan: "September", y: 28.7 },
+                { x: 10, tahun: 2025, bulan: "Oktober", y: 29.1 },
+                { x: 11, tahun: 2025, bulan: "November", y: 28.4 },
+                { x: 12, tahun: 2025, bulan: "Desember", y: 27.8 }
+            ];
+
+            const n = dataSuhu.length;
+
+            // 2. Perhitungan Statistik Rumus Regresi Linear (Y = a + bX)
+            let sumX = 0, sumY = 0, sumX2 = 0, sumXY = 0;
+            dataSuhu.forEach(item => {
+                sumX += item.x;
+                sumY += item.y;
+                sumX2 += item.x * item.x;
+                sumXY += item.x * item.y;
+            });
+
+            // Rumus mencari nilai kemiringan (b) dan konstanta (a)
+            const b = ((n * sumXY) - (sumX * sumY)) / ((n * sumX2) - (sumX * sumX));
+            const a = (sumY - (b * sumX)) / n;
+
+            // Tampilkan parameter statistik ke kartu dashboard atas
+            document.getElementById("val-n").innerText = n;
+            document.getElementById("val-a").innerText = a.toFixed(4);
+            document.getElementById("val-b").innerText = b.toFixed(4);
+            document.getElementById("val-model").innerText = `Y = ${a.toFixed(2)} + (${b.toFixed(3)} * X)`;
+
+            // 3. Menghitung Prediksi untuk Data Historis & 3 Bulan ke Depan
+            const labelGrafik = [];
+            const dataSuhuAsli = [];
+            const dataSuhuTren = [];
+            const tbody = document.getElementById("table-body");
+
+            // Render data lama (historis) ke tabel dan grafik
+            dataSuhu.forEach(item => {
+                const x2 = item.x * item.x;
+                const xy = item.x * item.y;
+                const prediksi = a + (b * item.x);
+                const error = Math.abs(item.y - prediksi);
+
+                labelGrafik.push(`${item.bulan} ${item.tahun}`);
+                dataSuhuAsli.push(item.y);
+                dataSuhuTren.push(Number(prediksi.toFixed(2)));
+
+                const row = `<tr>
+                    <td class="px-3 py-2 border-b border-slate-100">${item.x}</td>
+                    <td class="px-3 py-2 border-b border-slate-100">${item.tahun}</td>
+                    <td class="px-3 py-2 border-b border-slate-100">${item.bulan}</td>
+                    <td class="px-3 py-2 border-b border-slate-100 font-semibold text-slate-800">${item.y} °C</td>
+                    <td class="px-3 py-2 border-b border-slate-100">${x2}</td>
+                    <td class="px-3 py-2 border-b border-slate-100">${xy.toFixed(1)}</td>
+                    <td class="px-3 py-2 border-b border-slate-100 text-blue-600 font-medium">${prediksi.toFixed(2)} °C</td>
+                    <td class="px-3 py-2 border-b border-slate-100 text-amber-600">${error.toFixed(2)}</td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+
+            // Hitung tambahan 3 bulan masa depan (Peramalan/Forecasting)
+            const bulanMasaDepan = ["Januari", "Februari", "Maret"];
+            const tahunMasaDepan = 2026;
+
+            for (let i = 1; i <= 3; i++) {
+                const nextX = n + i;
+                const nextPrediksi = a + (b * nextX);
+
